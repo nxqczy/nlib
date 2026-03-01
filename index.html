@@ -504,7 +504,7 @@
                 summary: document.getElementById('book-summary').value,
                 process_domain: document.getElementById('book-process-domain').value,
                 process_group: document.getElementById('book-process-group').value,
-                maturity_level: document.getElementById('book-maturity-level').value,
+                maturity_level: document.getElementById('book-maturity-level').value ? parseInt(document.getElementById('book-maturity-level').value) : null,
                 material_property: document.getElementById('book-material-property').value,
                 update_time: Date.now()
             };
