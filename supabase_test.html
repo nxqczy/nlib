@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supabase连接测试</h1>
+    <button onclick="testSupabase()">测试Supabase连接</button>
+    <div id="result" class="result"></div>
+
+    <script>
+        function testSupabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '测试中...';
+            
+            // Supabase配置
+            const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+            const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+            
+            console.log('开始测试Supabase连接...');
+            console.log('Supabase URL:', supabaseUrl);
+            console.log('Supabase Key:', supabaseKey);
+            
+            // 测试基本网络连接
+            fetch('https://www.google.com')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('网络连接正常');
+                        resultDiv.innerHTML += '<p class="success">网络连接正常</p>';
+                    } else {
+                        console.log('网络连接失败');
+                        resultDiv.innerHTML += '<p class="error">网络连接失败</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('网络连接错误:', error);
+                    resultDiv.innerHTML += `<p class="error">网络连接错误: ${error.message}</p>`;
+                })
+                .finally(() => {
+                    // 测试Supabase API
+                    console.log('测试Supabase API...');
+                    resultDiv.innerHTML += '<h3>测试Supabase API...</h3>';
+                    
+                    fetch(`${supabaseUrl}/rest/v1/books?select=*`, {
+                        method: 'GET',
+                        headers: {
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        console.log('Supabase响应状态:', response.status);
+                        console.log('Supabase响应头:', response.headers);
+                        
+                        if (response.ok) {
+                            return response.json();
+                        } else {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                    })
+                    .then(data => {
+                        console.log('Supabase响应数据:', data);
+                        resultDiv.innerHTML += '<p class="success">Supabase连接成功！</p>';
+                        resultDiv.innerHTML += `<p>获取到 ${data.length} 条图书数据</p>`;
+                        resultDiv.innerHTML += '<h4>数据示例:</h4>';
+                        resultDiv.innerHTML += `<pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>`;
+                    })
+                    .catch(error => {
+                        console.error('Supabase连接错误:', error);
+                        resultDiv.innerHTML += `<p class="error">Supabase连接错误: ${error.message}</p>`;
+                        resultDiv.innerHTML += `<pre>${JSON.stringify(error, null, 2)}</pre>`;
+                    });
+                });
+        }
+    </script>
+</body>
+</html>

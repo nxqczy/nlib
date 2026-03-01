@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase连接测试</h1>
+    <div id="result"></div>
+    
+    <script>
+        // 初始化Supabase连接
+        const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+        const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        const resultDiv = document.getElementById('result');
+        
+        async function testConnection() {
+            resultDiv.innerHTML = '测试中...';
+            
+            try {
+                console.log('开始测试Supabase连接...');
+                console.log('Supabase URL:', supabaseUrl);
+                console.log('Supabase Key:', supabaseKey);
+                
+                const { data, error } = await supabase
+                    .from('books')
+                    .select('*')
+                    .eq('is_deleted', false)
+                    .limit(5);
+                
+                console.log('测试结果:', { data, error });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                resultDiv.innerHTML = `
+                    <h2>连接成功！</h2>
+                    <p>获取到 ${data.length} 条图书数据</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('连接失败:', error);
+                resultDiv.innerHTML = `
+                    <h2>连接失败！</h2>
+                    <p>错误信息: ${error.message}</p>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                `;
+            }
+        }
+        
+        // 页面加载完成后测试连接
+        window.addEventListener('DOMContentLoaded', testConnection);
+    </script>
+</body>
+</html>

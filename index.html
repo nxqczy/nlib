@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书管理查询端</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        .search-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .search-controls input,
+        .search-controls select,
+        .search-controls button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            height: 36px;
+            box-sizing: border-box;
+        }
+        
+        .search-controls button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .search-controls .btn-add {
+            background-color: #27ae60;
+        }
+        
+        .search-controls button:hover {
+            background-color: #2980b9;
+        }
+        
+        .book-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            min-width: 80px;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            position: relative;
+            user-select: none;
+        }
+        
+        th:hover {
+            background-color: #e8f4f8;
+        }
+        
+        th.resize-handle {
+            position: relative;
+        }
+        
+        th.resize-handle::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            background-color: transparent;
+        }
+        
+        th.resize-handle:hover::after {
+            background-color: #3498db;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-edit {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-add {
+            background-color: #27ae60;
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图书管理查询端</h1>
+        
+        <div class="search-section">
+            <div class="search-controls">
+                <input type="text" id="search-input" placeholder="搜索图书...">
+                <select id="field-filter">
+                    <option value="all">所有字段</option>
+                    <option value="title">书名</option>
+                    <option value="author">作者</option>
+                    <option value="isbn">ISBN</option>
+                    <option value="summary">内容简介</option>
+                    <option value="process_domain">处理领域</option>
+                    <option value="process_group">处理组</option>
+                    <option value="maturity_level">成熟度等级</option>
+                    <option value="material_property">材料性质</option>
+                </select>
+                <button onclick="searchBooks()">搜索</button>
+                <button class="btn btn-add" onclick="openAddModal()">新增图书</button>
+            </div>
+        </div>
+        
+        <div class="book-list">
+            <div id="status-message"></div>
+            <table id="book-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>书名</th>
+                        <th>作者</th>
+                        <th>ISBN</th>
+                        <th>内容简介</th>
+                        <th>处理领域</th>
+                        <th>处理组</th>
+                        <th>成熟度等级</th>
+                        <th>材料性质</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="book-body">
+                    <!-- 图书列表将通过JavaScript动态生成 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 新增/编辑模态框 -->
+    <div id="book-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">新增图书</h2>
+            <form id="book-form">
+                <input type="hidden" id="book-id">
+                
+                <div class="form-group">
+                    <label for="book-title">书名</label>
+                    <input type="text" id="book-title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-author">作者</label>
+                    <input type="text" id="book-author" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-isbn">ISBN</label>
+                    <input type="text" id="book-isbn">
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-summary">内容简介</label>
+                    <textarea id="book-summary"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-process-domain">处理领域</label>
+                    <input type="text" id="book-process-domain">
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-process-group">处理组</label>
+                    <input type="text" id="book-process-group">
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-maturity-level">成熟度等级</label>
+                    <input type="text" id="book-maturity-level">
+                </div>
+                
+                <div class="form-group">
+                    <label for="book-material-property">材料性质</label>
+                    <input type="text" id="book-material-property">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-add">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Supabase配置
+        const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+        const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        let currentBookId = null;
+        
+        // 页面加载时获取所有图书
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchBooks();
+        });
+        
+        // 获取所有图书
+        async function fetchBooks() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .select('*')
+                    .eq('is_deleted', false)
+                    .order('update_time', { ascending: false });
+                
+                if (error) {
+                    showStatus('获取图书失败: ' + error.message, 'error');
+                    return;
+                }
+                
+                displayBooks(data);
+            } catch (error) {
+                showStatus('网络错误: ' + error.message, 'error');
+            }
+        }
+        
+        // 搜索图书
+        async function searchBooks() {
+            const searchTerm = document.getElementById('search-input').value;
+            const field = document.getElementById('field-filter').value;
+            
+            try {
+                let query = supabaseClient
+                    .from('books')
+                    .select('*')
+                    .eq('is_deleted', false);
+                
+                if (searchTerm) {
+                    if (field === 'all') {
+                        // 搜索所有字段
+                        query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%,isbn.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,process_domain.ilike.%${searchTerm}%,process_group.ilike.%${searchTerm}%,material_property.ilike.%${searchTerm}%`);
+                    } else {
+                        // 搜索指定字段
+                        if (field === 'maturity_level') {
+                            // 成熟度等级是数字字段，使用等于搜索
+                            query = query.eq(field, parseInt(searchTerm));
+                        } else {
+                            // 其他字段使用模糊搜索
+                            query = query.ilike(field, `%${searchTerm}%`);
+                        }
+                    }
+                }
+                
+                query = query.order('update_time', { ascending: false });
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    showStatus('搜索失败: ' + error.message, 'error');
+                    return;
+                }
+                
+                displayBooks(data);
+            } catch (error) {
+                showStatus('网络错误: ' + error.message, 'error');
+            }
+        }
+        
+        // 显示图书列表
+        function displayBooks(books) {
+            const tbody = document.getElementById('book-body');
+            tbody.innerHTML = '';
+            
+            if (books.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">暂无图书数据</td></tr>';
+                return;
+            }
+            
+            books.forEach(book => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${book.id || ''}</td>
+                    <td>${book.title}</td>
+                    <td>${book.author}</td>
+                    <td>${book.isbn || ''}</td>
+                    <td>${(book.summary || '').substring(0, 50)}${(book.summary || '').length > 50 ? '...' : ''}</td>
+                    <td>${book.process_domain || ''}</td>
+                    <td>${book.process_group || ''}</td>
+                    <td>${book.maturity_level || ''}</td>
+                    <td>${book.material_property || ''}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-edit" data-book='${JSON.stringify(book)}'>编辑</button>
+                            <button class="btn btn-delete" data-book-uuid='${book.book_uuid}'>删除</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 添加事件监听器
+            document.querySelectorAll('.btn-edit').forEach(button => {
+                button.addEventListener('click', function() {
+                    const book = JSON.parse(this.dataset.book);
+                    openEditModal(book);
+                });
+            });
+            
+            document.querySelectorAll('.btn-delete').forEach(button => {
+                button.addEventListener('click', function() {
+                    const bookUuid = this.dataset.bookUuid;
+                    deleteBook(bookUuid);
+                });
+            });
+        }
+        
+        // 打开新增模态框
+        function openAddModal() {
+            currentBookId = null;
+            document.getElementById('modal-title').textContent = '新增图书';
+            document.getElementById('book-form').reset();
+            document.getElementById('book-id').value = '';
+            document.getElementById('book-modal').style.display = 'block';
+        }
+        
+        // 打开编辑模态框
+        function openEditModal(book) {
+            currentBookId = book.book_uuid;
+            document.getElementById('modal-title').textContent = '编辑图书';
+            document.getElementById('book-id').value = book.book_uuid;
+            document.getElementById('book-title').value = book.title;
+            document.getElementById('book-author').value = book.author;
+            document.getElementById('book-isbn').value = book.isbn || '';
+            document.getElementById('book-summary').value = book.summary || '';
+            document.getElementById('book-process-domain').value = book.process_domain || '';
+            document.getElementById('book-process-group').value = book.process_group || '';
+            document.getElementById('book-maturity-level').value = book.maturity_level || '';
+            document.getElementById('book-material-property').value = book.material_property || '';
+            document.getElementById('book-modal').style.display = 'block';
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('book-modal').style.display = 'none';
+        }
+        
+        // 保存图书
+        document.getElementById('book-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const bookData = {
+                title: document.getElementById('book-title').value,
+                author: document.getElementById('book-author').value,
+                isbn: document.getElementById('book-isbn').value,
+                summary: document.getElementById('book-summary').value,
+                process_domain: document.getElementById('book-process-domain').value,
+                process_group: document.getElementById('book-process-group').value,
+                maturity_level: document.getElementById('book-maturity-level').value,
+                material_property: document.getElementById('book-material-property').value,
+                update_time: Date.now()
+            };
+            
+            try {
+                if (currentBookId) {
+                    // 更新图书
+                    const { error } = await supabaseClient
+                        .from('books')
+                        .update(bookData)
+                        .eq('book_uuid', currentBookId);
+                    
+                    if (error) {
+                        showStatus('更新失败: ' + error.message, 'error');
+                        return;
+                    }
+                    
+                    showStatus('更新成功', 'success');
+                } else {
+                    // 新增图书
+                    const { error } = await supabaseClient
+                        .from('books')
+                        .insert({
+                            ...bookData,
+                            book_uuid: crypto.randomUUID(),
+                            create_time: Date.now(),
+                            is_deleted: false
+                        });
+                    
+                    if (error) {
+                        showStatus('新增失败: ' + error.message, 'error');
+                        return;
+                    }
+                    
+                    showStatus('新增成功', 'success');
+                }
+                
+                closeModal();
+                fetchBooks();
+            } catch (error) {
+                showStatus('网络错误: ' + error.message, 'error');
+            }
+        });
+        
+        // 删除图书（软删除）
+        async function deleteBook(bookUuid) {
+            if (!confirm('确定要删除这本书吗？')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('books')
+                    .update({
+                        is_deleted: true,
+                        update_time: Date.now()
+                    })
+                    .eq('book_uuid', bookUuid);
+                
+                if (error) {
+                    showStatus('删除失败: ' + error.message, 'error');
+                    return;
+                }
+                
+                showStatus('删除成功', 'success');
+                fetchBooks();
+            } catch (error) {
+                showStatus('网络错误: ' + error.message, 'error');
+            }
+        }
+        
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = 'status-message';
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('book-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // 表格列宽调整功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.getElementById('book-table');
+            const headers = table.querySelectorAll('th');
+            
+            headers.forEach(header => {
+                header.classList.add('resize-handle');
+                
+                let isResizing = false;
+                let startX;
+                let startWidth;
+                
+                header.addEventListener('mousedown', function(e) {
+                    // 只有在点击右侧边缘时才开始调整
+                    if (e.clientX > header.offsetWidth - 10) {
+                        isResizing = true;
+                        startX = e.clientX;
+                        startWidth = header.offsetWidth;
+                        document.body.style.cursor = 'col-resize';
+                    }
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isResizing) return;
+                    
+                    const width = startWidth + (e.clientX - startX);
+                    if (width > 80) { // 最小宽度80px
+                        header.style.width = width + 'px';
+                    }
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
