@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>详细测试新增图书</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        .log { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>详细测试新增图书</h1>
+    <button onclick="testConnection()">测试连接</button>
+    <button onclick="testAddBook()">测试新增图书</button>
+    <button onclick="testFetchBooks()">测试获取图书</button>
+    <div id="result" class="result"></div>
+    <div id="log" class="log"></div>
+    
+    <script>
+        let supabaseClient = null;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toISOString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<p class="${type}">${message}</p>`;
+        }
+        
+        async function testConnection() {
+            log('开始测试连接...');
+            showResult('测试连接中...', 'success');
+            
+            try {
+                // 测试Supabase SDK是否加载
+                if (!window.supabase) {
+                    log('Supabase SDK加载失败');
+                    showResult('Supabase SDK加载失败', 'error');
+                    return;
+                }
+                
+                log('Supabase SDK加载成功');
+                
+                // Supabase配置
+                const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+                const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+                
+                log(`配置: URL=${supabaseUrl}, Key=${supabaseKey.substring(0, 10)}...`);
+                
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                log('Supabase客户端创建成功');
+                
+                showResult('连接测试成功', 'success');
+            } catch (error) {
+                log(`连接测试失败: ${error.message}`);
+                showResult(`连接测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testFetchBooks() {
+            log('开始测试获取图书...');
+            showResult('获取图书中...', 'success');
+            
+            try {
+                if (!supabaseClient) {
+                    log('Supabase客户端未初始化');
+                    showResult('请先测试连接', 'error');
+                    return;
+                }
+                
+                log('发送获取图书请求...');
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .select('*')
+                    .eq('is_deleted', false)
+                    .limit(5);
+                
+                if (error) {
+                    log(`获取图书失败: ${error.message}`);
+                    log(`错误详情: ${JSON.stringify(error)}`);
+                    showResult(`获取图书失败: ${error.message}`, 'error');
+                } else {
+                    log(`获取图书成功，返回 ${data.length} 条记录`);
+                    log(`数据: ${JSON.stringify(data)}`);
+                    showResult(`获取图书成功，返回 ${data.length} 条记录`, 'success');
+                }
+            } catch (error) {
+                log(`获取图书异常: ${error.message}`);
+                log(`异常堆栈: ${error.stack}`);
+                showResult(`获取图书异常: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAddBook() {
+            log('开始测试新增图书...');
+            showResult('新增图书中...', 'success');
+            
+            try {
+                if (!supabaseClient) {
+                    log('Supabase客户端未初始化');
+                    showResult('请先测试连接', 'error');
+                    return;
+                }
+                
+                // 测试新增图书（简化版）
+                const testBook = {
+                    title: '测试图书' + Date.now(),
+                    author: '测试作者',
+                    book_uuid: crypto.randomUUID(),
+                    update_time: Date.now(),
+                    create_time: Date.now(),
+                    is_deleted: false
+                };
+                
+                log(`准备新增图书: ${JSON.stringify(testBook)}`);
+                
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .insert(testBook);
+                
+                if (error) {
+                    log(`新增失败: ${error.message}`);
+                    log(`错误详情: ${JSON.stringify(error)}`);
+                    showResult(`新增失败: ${error.message}`, 'error');
+                } else {
+                    log(`新增成功，返回数据: ${JSON.stringify(data)}`);
+                    showResult('新增图书成功', 'success');
+                }
+            } catch (error) {
+                log(`新增图书异常: ${error.message}`);
+                log(`异常堆栈: ${error.stack}`);
+                showResult(`新增图书异常: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载时自动测试连接
+        window.onload = function() {
+            log('页面加载完成，开始自动测试连接...');
+            testConnection();
+        };
+    </script>
+</body>
+</html>

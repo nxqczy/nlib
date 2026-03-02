@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试新增图书</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        .log { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        form { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        input, textarea { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+        label { display: block; margin: 10px 0 5px 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>调试新增图书</h1>
+    <form id="book-form">
+        <label for="title">书名</label>
+        <input type="text" id="title" value="测试图书" required>
+        
+        <label for="author">作者</label>
+        <input type="text" id="author" value="测试作者" required>
+        
+        <label for="isbn">ISBN</label>
+        <input type="text" id="isbn" value="1234567890">
+        
+        <label for="summary">内容简介</label>
+        <textarea id="summary">这是一本测试图书</textarea>
+        
+        <label for="process_domain">处理领域</label>
+        <input type="text" id="process_domain" value="测试领域">
+        
+        <label for="process_group">处理组</label>
+        <input type="text" id="process_group" value="测试组">
+        
+        <label for="maturity_level">成熟度等级</label>
+        <input type="number" id="maturity_level" value="1">
+        
+        <label for="material_property">材料性质</label>
+        <input type="text" id="material_property" value="测试性质">
+        
+        <button type="button" onclick="testAddBook()">测试新增图书</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+    <div id="log" class="log"></div>
+    
+    <script>
+        let supabaseClient = null;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toISOString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<p class="${type}">${message}</p>`;
+        }
+        
+        // 初始化Supabase客户端
+        function initSupabase() {
+            log('初始化Supabase客户端...');
+            
+            if (!window.supabase) {
+                log('Supabase SDK加载失败');
+                showResult('Supabase SDK加载失败', 'error');
+                return false;
+            }
+            
+            const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+            const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+            
+            supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            log('Supabase客户端创建成功');
+            return true;
+        }
+        
+        // 测试新增图书
+        async function testAddBook() {
+            log('开始测试新增图书...');
+            showResult('测试中...', 'success');
+            
+            // 初始化Supabase
+            if (!supabaseClient && !initSupabase()) {
+                return;
+            }
+            
+            try {
+                // 获取表单数据
+                const bookData = {
+                    title: document.getElementById('title').value,
+                    author: document.getElementById('author').value,
+                    isbn: document.getElementById('isbn').value,
+                    summary: document.getElementById('summary').value,
+                    process_domain: document.getElementById('process_domain').value,
+                    process_group: document.getElementById('process_group').value,
+                    maturity_level: document.getElementById('maturity_level').value ? parseInt(document.getElementById('maturity_level').value) : null,
+                    material_property: document.getElementById('material_property').value,
+                    update_time: Date.now(),
+                    book_uuid: crypto.randomUUID(),
+                    is_deleted: false
+                };
+                
+                log('准备新增图书数据:');
+                log(JSON.stringify(bookData, null, 2));
+                
+                // 尝试新增图书
+                log('发送新增请求...');
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .insert(bookData);
+                
+                log('请求完成，检查响应...');
+                
+                if (error) {
+                    log('新增失败:');
+                    log(JSON.stringify(error, null, 2));
+                    showResult(`新增失败: ${error.message}`, 'error');
+                } else {
+                    log('新增成功:');
+                    log(JSON.stringify(data, null, 2));
+                    showResult('新增图书成功', 'success');
+                }
+            } catch (error) {
+                log('异常:');
+                log(JSON.stringify(error, null, 2));
+                showResult(`异常: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            log('页面加载完成');
+            initSupabase();
+        };
+    </script>
+</body>
+</html>

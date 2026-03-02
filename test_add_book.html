@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试新增图书</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>测试新增图书</h1>
+    <button onclick="testAddBook()">测试新增图书</button>
+    <div id="result" class="result"></div>
+    
+    <script>
+        async function testAddBook() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '测试中...';
+            
+            try {
+                // 测试Supabase SDK是否加载
+                if (!window.supabase) {
+                    resultDiv.innerHTML = '<p class="error">Supabase SDK加载失败</p>';
+                    return;
+                }
+                
+                // Supabase配置
+                const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+                const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+                const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                
+                resultDiv.innerHTML += '<p>Supabase客户端创建成功</p>';
+                
+                // 测试新增图书
+                const testBook = {
+                    title: '测试图书',
+                    author: '测试作者',
+                    isbn: '1234567890',
+                    summary: '这是一本测试图书',
+                    process_domain: '测试领域',
+                    process_group: '测试组',
+                    maturity_level: 1,
+                    material_property: '测试性质',
+                    update_time: Date.now(),
+                    book_uuid: crypto.randomUUID(),
+                    create_time: Date.now(),
+                    is_deleted: false
+                };
+                
+                resultDiv.innerHTML += '<p>准备新增图书...</p>';
+                
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .insert(testBook);
+                
+                if (error) {
+                    resultDiv.innerHTML += `<p class="error">新增失败: ${error.message}</p>`;
+                    resultDiv.innerHTML += `<p class="error">错误详情: ${JSON.stringify(error)}</p>`;
+                } else {
+                    resultDiv.innerHTML += '<p class="success">新增成功</p>';
+                    resultDiv.innerHTML += `<p>返回数据: ${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<p class="error">测试失败: ${error.message}</p>`;
+                resultDiv.innerHTML += `<p class="error">异常详情: ${error.stack}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
