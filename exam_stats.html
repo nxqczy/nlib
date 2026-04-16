@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试信息统计</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            margin-top: 20px;
+            max-width: 1200px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">考试信息统计</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                统计概览
+            </div>
+            <div class="card-body">
+                <div class="error-message" id="stats-error"></div>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-exams">加载中...</div>
+                        <div class="stat-label">总考试次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-students">加载中...</div>
+                        <div class="stat-label">总考生人数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="average-score">加载中...</div>
+                        <div class="stat-label">平均分数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="exam-types">加载中...</div>
+                        <div class="stat-label">考试类型数量</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                考试信息查询
+            </div>
+            <div class="card-body">
+                <div class="search-container">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="search-student" placeholder="搜索考生姓名">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="search-exam-type" placeholder="搜索考试类型">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100" id="search-btn">搜索</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="error-message" id="table-error"></div>
+                <div class="table-container" style="overflow-x: auto; max-width: 100%;">
+                    <table class="table table-striped" style="min-width: 800px;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>考生姓名</th>
+                                <th>考试类型</th>
+                                <th>抽题时间</th>
+                                <th>分数</th>
+                                <th>题目列表</th>
+                                <th>其他信息</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exam-table-body">
+                            <tr>
+                                <td colspan="7" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-center mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination" id="pagination">
+                            <!-- 分页按钮将通过JavaScript生成 -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化Supabase客户端
+        const supabaseUrl = 'https://iwpnajbmceobbkvwqtmy.supabase.co';
+        const supabaseKey = 'sb_publishable_-FWZBtjD8_JcgoaupQSq0w_2KCvd-FT';
+        let supabaseClient;
+        
+        console.log('正在初始化Supabase客户端...');
+        console.log('URL:', supabaseUrl);
+        console.log('Key:', supabaseKey);
+        
+        // 检查Supabase SDK是否加载
+        if (typeof supabase === 'undefined') {
+            console.error('Supabase SDK未加载');
+            document.getElementById('stats-error').textContent = 'Supabase SDK未加载，请检查网络连接';
+            document.getElementById('table-error').textContent = 'Supabase SDK未加载，请检查网络连接';
+        } else {
+            console.log('Supabase SDK已加载');
+        }
+        
+        try {
+            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+            console.log('Supabase客户端初始化成功:', supabaseClient);
+        } catch (error) {
+            console.error('Supabase客户端初始化失败:', error);
+            document.getElementById('stats-error').textContent = 'Supabase客户端初始化失败: ' + error.message;
+            document.getElementById('table-error').textContent = 'Supabase客户端初始化失败: ' + error.message;
+        }
+        
+        // 分页参数
+        let currentPage = 1;
+        const pageSize = 10;
+        let totalPages = 1;
+        
+        // 搜索参数
+        let searchStudent = '';
+        let searchExamType = '';
+        
+        // 页面加载时获取统计数据和考试信息
+        window.onload = async function() {
+            await loadStats();
+            await loadExamInfo();
+        };
+        
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Supabase客户端未初始化');
+                }
+                
+                // 获取总考试次数
+                console.log('开始获取总考试次数...');
+                try {
+                    const { data: totalExamsData, error: totalExamsError } = await supabaseClient
+                        .from('exam_info')
+                        .select('*');
+                    
+                    if (totalExamsError) {
+                        console.error('获取总考试次数失败:', totalExamsError);
+                        document.getElementById('total-exams').textContent = 'N/A';
+                    } else {
+                        console.log('总考试次数:', totalExamsData.length);
+                        document.getElementById('total-exams').textContent = totalExamsData.length;
+                    }
+                } catch (error) {
+                    console.error('获取总考试次数异常:', error);
+                    document.getElementById('total-exams').textContent = 'N/A';
+                }
+                
+                // 获取总考生人数（去重）
+                console.log('开始获取总考生人数...');
+                try {
+                    const { data: totalStudentsData, error: totalStudentsError } = await supabaseClient
+                        .from('exam_info')
+                        .select('student_name');
+                    
+                    if (totalStudentsError) {
+                        console.error('获取总考生人数失败:', totalStudentsError);
+                        document.getElementById('total-students').textContent = 'N/A';
+                    } else {
+                        // 客户端去重
+                        const uniqueStudents = [...new Set(totalStudentsData.map(item => item.student_name))];
+                        console.log('总考生数据:', totalStudentsData);
+                        console.log('去重后总考生人数:', uniqueStudents.length);
+                        document.getElementById('total-students').textContent = uniqueStudents.length;
+                    }
+                } catch (error) {
+                    console.error('获取总考生人数异常:', error);
+                    document.getElementById('total-students').textContent = 'N/A';
+                }
+                
+                // 获取平均分数
+                console.log('开始获取平均分数...');
+                try {
+                    const { data: scoresData, error: scoresError } = await supabaseClient
+                        .from('exam_info')
+                        .select('*');
+                    
+                    if (scoresError) {
+                        console.error('获取分数数据失败:', scoresError);
+                        document.getElementById('average-score').textContent = 'N/A';
+                    } else {
+                        console.log('分数数据:', scoresData);
+                        const totalScore = scoresData.reduce((sum, item) => sum + (parseFloat(item.score) || 0), 0);
+                        const averageScore = scoresData.length > 0 ? (totalScore / scoresData.length).toFixed(2) : 0;
+                        console.log('平均分数:', averageScore);
+                        document.getElementById('average-score').textContent = averageScore;
+                    }
+                } catch (error) {
+                    console.error('获取平均分数异常:', error);
+                    document.getElementById('average-score').textContent = 'N/A';
+                }
+                
+                // 获取考试类型数量
+                console.log('开始获取考试类型数量...');
+                try {
+                    const { data: examTypesData, error: examTypesError } = await supabaseClient
+                        .from('exam_info')
+                        .select('exam_type');
+                    
+                    if (examTypesError) {
+                        console.error('获取考试类型数量失败:', examTypesError);
+                        document.getElementById('exam-types').textContent = 'N/A';
+                    } else {
+                        // 客户端去重
+                        const uniqueTypes = [...new Set(examTypesData.map(item => item.exam_type))];
+                        console.log('考试类型数据:', examTypesData);
+                        console.log('去重后考试类型数量:', uniqueTypes.length);
+                        document.getElementById('exam-types').textContent = uniqueTypes.length;
+                    }
+                } catch (error) {
+                    console.error('获取考试类型数量异常:', error);
+                    document.getElementById('exam-types').textContent = 'N/A';
+                }
+                
+                // 清除错误信息
+                document.getElementById('stats-error').textContent = '';
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+                document.getElementById('stats-error').textContent = '加载统计数据失败: ' + error.message;
+                // 显示错误信息
+                document.getElementById('total-exams').textContent = 'N/A';
+                document.getElementById('total-students').textContent = 'N/A';
+                document.getElementById('average-score').textContent = 'N/A';
+                document.getElementById('exam-types').textContent = 'N/A';
+            }
+        }
+        
+        // 加载考试信息
+        async function loadExamInfo() {
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Supabase客户端未初始化');
+                }
+                
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">加载中...</td></tr>';
+                
+                // 构建查询
+                console.log('开始构建查询...');
+                try {
+                    let query = supabaseClient
+                        .from('exam_info')
+                        .select('*', { count: 'exact' });
+                    
+                    // 添加搜索条件 - 全字段模糊查询
+                    if (searchStudent) {
+                        // 搜索所有字段
+                        query = query.or(`student_name.ilike.%${searchStudent}%,exam_type.ilike.%${searchStudent}%,question_ids.ilike.%${searchStudent}%,score.ilike.%${searchStudent}%`);
+                    }
+                    
+                    if (searchExamType) {
+                        // 搜索所有字段
+                        query = query.or(`student_name.ilike.%${searchExamType}%,exam_type.ilike.%${searchExamType}%,question_ids.ilike.%${searchExamType}%,score.ilike.%${searchExamType}%`);
+                    }
+                    
+                    // 添加分页
+                    console.log('开始执行查询...');
+                    const { data, error, count } = await query
+                        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+                    
+                    if (error) {
+                        console.error('查询失败:', error);
+                        document.getElementById('table-error').textContent = '查询失败: ' + error.message;
+                        document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">查询失败，请刷新页面重试</td></tr>';
+                        return;
+                    }
+                    
+                    console.log('查询成功，数据:', data);
+                    console.log('总记录数:', count);
+                    
+                    // 计算总页数
+                    totalPages = Math.ceil(count / pageSize);
+                    console.log('总页数:', totalPages);
+                    
+                    // 渲染考试信息表格
+                    const tableBody = document.getElementById('exam-table-body');
+                    if (data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">没有找到符合条件的记录</td></tr>';
+                    } else {
+                        tableBody.innerHTML = data.map(item => {
+                            // 收集其他字段的信息
+                            const otherFields = [];
+                            for (const key in item) {
+                                if (!['id', 'student_name', 'exam_type', 'created_at', 'score', 'question_ids'].includes(key)) {
+                                    otherFields.push(`${key}: ${item[key]}`);
+                                }
+                            }
+                            const otherInfo = otherFields.join('<br>') || 'N/A';
+                            
+                            return `
+                                <tr>
+                                    <td>${item.id || 'N/A'}</td>
+                                    <td>${item.student_name || 'N/A'}</td>
+                                    <td>${item.exam_type || 'N/A'}</td>
+                                    <td>${item.created_at || 'N/A'}</td>
+                                    <td>${item.score || 'N/A'}</td>
+                                    <td>${item.question_ids || 'N/A'}</td>
+                                    <td>${otherInfo}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                    
+                    // 渲染分页按钮
+                    renderPagination();
+                    
+                    // 清除错误信息
+                    document.getElementById('table-error').textContent = '';
+                } catch (error) {
+                    console.error('执行查询异常:', error);
+                    document.getElementById('table-error').textContent = '执行查询异常: ' + error.message;
+                    document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">执行查询异常，请刷新页面重试</td></tr>';
+                }
+            } catch (error) {
+                console.error('加载考试信息失败:', error);
+                document.getElementById('table-error').textContent = '加载考试信息失败: ' + error.message;
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">加载失败，请刷新页面重试</td></tr>';
+            }
+        }
+        
+        // 渲染分页按钮
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            
+            // 上一页按钮
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">&laquo;</a>`;
+            pagination.appendChild(prevLi);
+            
+            // 页码按钮
+            for (let i = 1; i <= totalPages; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})"><span class="d-none d-sm-inline">${i}</span><span class="d-sm-none">${i}</span></a>`;
+                pagination.appendChild(li);
+            }
+            
+            // 下一页按钮
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">&raquo;</a>`;
+            pagination.appendChild(nextLi);
+        }
+        
+        // 切换页码
+        function changePage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadExamInfo();
+        }
+        
+        // 搜索按钮点击事件
+        document.getElementById('search-btn').addEventListener('click', function() {
+            searchStudent = document.getElementById('search-student').value;
+            searchExamType = document.getElementById('search-exam-type').value;
+            currentPage = 1;
+            loadExamInfo();
+        });
+        
+        // 搜索框回车事件
+        document.getElementById('search-student').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('search-btn').click();
+            }
+        });
+        
+        document.getElementById('search-exam-type').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('search-btn').click();
+            }
+        });
+    </script>
+</body>
+</html>
