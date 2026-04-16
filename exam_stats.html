@@ -104,14 +104,36 @@
             </div>
             <div class="card-body">
                 <div class="search-container">
-                    <div class="row">
-                        <div class="col-md-4">
+                    <div class="row mb-2">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-id" placeholder="搜索ID">
+                        </div>
+                        <div class="col-md-3">
                             <input type="text" class="form-control" id="search-student" placeholder="搜索考生姓名">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-student-id" placeholder="搜索考生ID">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-exam-group" placeholder="搜索考试组别">
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-3">
                             <input type="text" class="form-control" id="search-exam-type" placeholder="搜索考试类型">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-main-examiner" placeholder="搜索主考官">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-examiner" placeholder="搜索考官">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="search-examiner-comment" placeholder="搜索考官评语">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
                             <button class="btn btn-primary w-100" id="search-btn">搜索</button>
                         </div>
                     </div>
@@ -119,21 +141,28 @@
                 
                 <div class="error-message" id="table-error"></div>
                 <div class="table-container" style="overflow-x: auto; max-width: 100%;">
-                    <table class="table table-striped" style="min-width: 800px;">
+                    <table class="table table-striped" style="min-width: 1200px;">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>考生姓名</th>
+                                <th>考生ID</th>
+                                <th>考试组别</th>
                                 <th>考试类型</th>
-                                <th>抽题时间</th>
-                                <th>分数</th>
-                                <th>题目列表</th>
-                                <th>其他信息</th>
+                                <th>主考官</th>
+                                <th>考官</th>
+                                <th>开始时间</th>
+                                <th>结束时间</th>
+                                <th>考试时长</th>
+                                <th>考试时间</th>
+                                <th>总得分</th>
+                                <th>考官评语</th>
+                                <th>创建时间</th>
                             </tr>
                         </thead>
                         <tbody id="exam-table-body">
                             <tr>
-                                <td colspan="7" class="text-center">加载中...</td>
+                                <td colspan="14" class="text-center">加载中...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -184,8 +213,14 @@
         let totalPages = 1;
         
         // 搜索参数
+        let searchId = '';
         let searchStudent = '';
+        let searchStudentId = '';
+        let searchExamGroup = '';
         let searchExamType = '';
+        let searchMainExaminer = '';
+        let searchExaminer = '';
+        let searchExaminerComment = '';
         
         // 页面加载时获取统计数据和考试信息
         window.onload = async function() {
@@ -305,7 +340,7 @@
                     throw new Error('Supabase客户端未初始化');
                 }
                 
-                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">加载中...</td></tr>';
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">加载中...</td></tr>';
                 
                 // 构建查询
                 console.log('开始构建查询...');
@@ -314,15 +349,37 @@
                         .from('exam_info')
                         .select('*', { count: 'exact' });
                     
-                    // 添加搜索条件 - 全字段模糊查询
+                    // 添加搜索条件
+                    if (searchId) {
+                        query = query.ilike('id', `%${searchId}%`);
+                    }
+                    
                     if (searchStudent) {
-                        // 搜索所有字段
-                        query = query.or(`student_name.ilike.%${searchStudent}%,exam_type.ilike.%${searchStudent}%,question_ids.ilike.%${searchStudent}%,score.ilike.%${searchStudent}%`);
+                        query = query.ilike('student_name', `%${searchStudent}%`);
+                    }
+                    
+                    if (searchStudentId) {
+                        query = query.ilike('student_id', `%${searchStudentId}%`);
+                    }
+                    
+                    if (searchExamGroup) {
+                        query = query.ilike('exam_group', `%${searchExamGroup}%`);
                     }
                     
                     if (searchExamType) {
-                        // 搜索所有字段
-                        query = query.or(`student_name.ilike.%${searchExamType}%,exam_type.ilike.%${searchExamType}%,question_ids.ilike.%${searchExamType}%,score.ilike.%${searchExamType}%`);
+                        query = query.ilike('exam_type', `%${searchExamType}%`);
+                    }
+                    
+                    if (searchMainExaminer) {
+                        query = query.ilike('main_examiner', `%${searchMainExaminer}%`);
+                    }
+                    
+                    if (searchExaminer) {
+                        query = query.ilike('examiner', `%${searchExaminer}%`);
+                    }
+                    
+                    if (searchExaminerComment) {
+                        query = query.ilike('examiner_comment', `%${searchExaminerComment}%`);
                     }
                     
                     // 添加分页
@@ -333,7 +390,7 @@
                     if (error) {
                         console.error('查询失败:', error);
                         document.getElementById('table-error').textContent = '查询失败: ' + error.message;
-                        document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">查询失败，请刷新页面重试</td></tr>';
+                        document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">查询失败，请刷新页面重试</td></tr>';
                         return;
                     }
                     
@@ -347,27 +404,25 @@
                     // 渲染考试信息表格
                     const tableBody = document.getElementById('exam-table-body');
                     if (data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">没有找到符合条件的记录</td></tr>';
+                        tableBody.innerHTML = '<tr><td colspan="18" class="text-center">没有找到符合条件的记录</td></tr>';
                     } else {
                         tableBody.innerHTML = data.map(item => {
-                            // 收集其他字段的信息
-                            const otherFields = [];
-                            for (const key in item) {
-                                if (!['id', 'student_name', 'exam_type', 'created_at', 'score', 'question_ids'].includes(key)) {
-                                    otherFields.push(`${key}: ${item[key]}`);
-                                }
-                            }
-                            const otherInfo = otherFields.join('<br>') || 'N/A';
-                            
                             return `
                                 <tr>
                                     <td>${item.id || 'N/A'}</td>
                                     <td>${item.student_name || 'N/A'}</td>
+                                    <td>${item.student_id || 'N/A'}</td>
+                                    <td>${item.exam_group || 'N/A'}</td>
                                     <td>${item.exam_type || 'N/A'}</td>
-                                    <td>${item.created_at || 'N/A'}</td>
+                                    <td>${item.main_examiner || 'N/A'}</td>
+                                    <td>${item.examiner || 'N/A'}</td>
+                                    <td>${item.start_time || 'N/A'}</td>
+                                    <td>${item.end_time || 'N/A'}</td>
+                                    <td>${item.exam_duration || 'N/A'}</td>
+                                    <td>${item.exam_time || 'N/A'}</td>
                                     <td>${item.score || 'N/A'}</td>
-                                    <td>${item.question_ids || 'N/A'}</td>
-                                    <td>${otherInfo}</td>
+                                    <td>${item.examiner_comment || 'N/A'}</td>
+                                    <td>${item.create_time || 'N/A'}</td>
                                 </tr>
                             `;
                         }).join('');
@@ -381,12 +436,12 @@
                 } catch (error) {
                     console.error('执行查询异常:', error);
                     document.getElementById('table-error').textContent = '执行查询异常: ' + error.message;
-                    document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">执行查询异常，请刷新页面重试</td></tr>';
+                    document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">执行查询异常，请刷新页面重试</td></tr>';
                 }
             } catch (error) {
                 console.error('加载考试信息失败:', error);
                 document.getElementById('table-error').textContent = '加载考试信息失败: ' + error.message;
-                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="6" class="text-center">加载失败，请刷新页面重试</td></tr>';
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">加载失败，请刷新页面重试</td></tr>';
             }
         }
         
@@ -425,22 +480,38 @@
         
         // 搜索按钮点击事件
         document.getElementById('search-btn').addEventListener('click', function() {
+            searchId = document.getElementById('search-id').value;
             searchStudent = document.getElementById('search-student').value;
+            searchStudentId = document.getElementById('search-student-id').value;
+            searchExamGroup = document.getElementById('search-exam-group').value;
             searchExamType = document.getElementById('search-exam-type').value;
+            searchMainExaminer = document.getElementById('search-main-examiner').value;
+            searchExaminer = document.getElementById('search-examiner').value;
+            searchExaminerComment = document.getElementById('search-examiner-comment').value;
             currentPage = 1;
             loadExamInfo();
         });
         
         // 搜索框回车事件
-        document.getElementById('search-student').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('search-btn').click();
-            }
-        });
+        const searchInputs = [
+            'search-id',
+            'search-student',
+            'search-student-id',
+            'search-exam-group',
+            'search-exam-type',
+            'search-main-examiner',
+            'search-examiner',
+            'search-examiner-comment'
+        ];
         
-        document.getElementById('search-exam-type').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('search-btn').click();
+        searchInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.getElementById('search-btn').click();
+                    }
+                });
             }
         });
     </script>
