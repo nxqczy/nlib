@@ -155,7 +155,8 @@
                                 <th>结束时间</th>
                                 <th>考试时长</th>
                                 <th>考试时间</th>
-                                <th>总得分</th>
+                                <th>总分</th>
+                                <th>评估</th>
                                 <th>考官评语</th>
                                 <th>创建时间</th>
                             </tr>
@@ -340,7 +341,7 @@
                     throw new Error('Supabase客户端未初始化');
                 }
                 
-                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">加载中...</td></tr>';
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="15" class="text-center">加载中...</td></tr>';
                 
                 // 构建查询
                 console.log('开始构建查询...');
@@ -390,7 +391,7 @@
                     if (error) {
                         console.error('查询失败:', error);
                         document.getElementById('table-error').textContent = '查询失败: ' + error.message;
-                        document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">查询失败，请刷新页面重试</td></tr>';
+                        document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="15" class="text-center">查询失败，请刷新页面重试</td></tr>';
                         return;
                     }
                     
@@ -404,7 +405,7 @@
                     // 渲染考试信息表格
                     const tableBody = document.getElementById('exam-table-body');
                     if (data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="18" class="text-center">没有找到符合条件的记录</td></tr>';
+                        tableBody.innerHTML = '<tr><td colspan="15" class="text-center">没有找到符合条件的记录</td></tr>';
                     } else {
                         tableBody.innerHTML = data.map(item => {
                             return `
@@ -420,7 +421,8 @@
                                     <td>${item.end_time || 'N/A'}</td>
                                     <td>${item.exam_duration || 'N/A'}</td>
                                     <td>${item.exam_time || 'N/A'}</td>
-                                    <td>${item.score || 'N/A'}</td>
+                                    <td>${item.total_score || 'N/A'}</td>
+                                    <td>${item.evaluation || 'N/A'}</td>
                                     <td>${item.examiner_comment || 'N/A'}</td>
                                     <td>${item.create_time || 'N/A'}</td>
                                 </tr>
@@ -436,12 +438,12 @@
                 } catch (error) {
                     console.error('执行查询异常:', error);
                     document.getElementById('table-error').textContent = '执行查询异常: ' + error.message;
-                    document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">执行查询异常，请刷新页面重试</td></tr>';
+                    document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="15" class="text-center">执行查询异常，请刷新页面重试</td></tr>';
                 }
             } catch (error) {
                 console.error('加载考试信息失败:', error);
                 document.getElementById('table-error').textContent = '加载考试信息失败: ' + error.message;
-                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="14" class="text-center">加载失败，请刷新页面重试</td></tr>';
+                document.getElementById('exam-table-body').innerHTML = '<tr><td colspan="15" class="text-center">加载失败，请刷新页面重试</td></tr>';
             }
         }
         
